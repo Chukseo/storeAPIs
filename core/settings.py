@@ -32,7 +32,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "localhost",
+    "https://storeapis-8bua.onrender.com",
     "127.0.0.1",
     "storefront-30228073381.us-east1.run.app", 
 ]
