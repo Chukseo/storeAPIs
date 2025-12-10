@@ -5,6 +5,9 @@ from .models import CartItem
 from .serializers import CartSerializer, CartItemSerializer
 from .utils import get_or_create_session_cart, get_or_create_user_cart, merge_session_cart_into_user_cart
 from product.models import Product
+from cart import models
+from django.db.models import Sum
+
 
 class CartDetailView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -13,6 +16,7 @@ class CartDetailView(APIView):
         cart = get_or_create_session_cart(request) if not request.user.is_authenticated else get_or_create_user_cart(request.user)
         serializer = CartSerializer(cart)
         return Response(serializer.data)
+
 
 class CartAddItemView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -36,6 +40,7 @@ class CartAddItemView(APIView):
 
         return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
 
+
 class CartUpdateItemView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -54,6 +59,7 @@ class CartUpdateItemView(APIView):
             item.save()
         return Response(CartSerializer(cart).data)
 
+
 class CartClearView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -61,6 +67,7 @@ class CartClearView(APIView):
         cart = get_or_create_session_cart(request) if not request.user.is_authenticated else get_or_create_user_cart(request.user)
         cart.items.all().delete()
         return Response({'detail': 'Cart cleared'}, status=status.HTTP_204_NO_CONTENT)
+
 
 class CartCheckoutPrepView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -71,3 +78,11 @@ class CartCheckoutPrepView(APIView):
         user_cart = get_or_create_user_cart(request.user)
         merge_session_cart_into_user_cart(session_cart, user_cart)
         return Response(CartSerializer(user_cart).data, status=status.HTTP_200_OK)
+
+class CartCountView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        cart = get_or_create_session_cart(request) if not request.user.is_authenticated else get_or_create_user_cart(request.user)
+        count = cart.items.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
+        return Response({'count': count}, status=status.HTTP_200_OK)
