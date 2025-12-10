@@ -5,8 +5,9 @@ from .models import CartItem
 from .serializers import CartSerializer, CartItemSerializer
 from .utils import get_or_create_session_cart, get_or_create_user_cart, merge_session_cart_into_user_cart
 from product.models import Product
-from cart import models
 from django.db.models import Sum
+
+from cart import models
 
 
 class CartDetailView(APIView):
@@ -18,10 +19,28 @@ class CartDetailView(APIView):
         return Response(serializer.data)
 
 
+class CartItemsView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        cart = get_or_create_session_cart(request) if not request.user.is_authenticated else get_or_create_user_cart(request.user)
+        items = cart.items.all()
+        serializer = CartItemSerializer(items, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class CartAddItemView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        session_key = request.session.session_key
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+
+        # ✅ Fix: use models.Cart instead of cart.objects
+        cart, created = models.Cart.objects.get_or_create(session_key=session_key)
+
         product_id = request.data.get('product_id')
         quantity = int(request.data.get('quantity', 1))
         if quantity < 1:
@@ -78,6 +97,7 @@ class CartCheckoutPrepView(APIView):
         user_cart = get_or_create_user_cart(request.user)
         merge_session_cart_into_user_cart(session_cart, user_cart)
         return Response(CartSerializer(user_cart).data, status=status.HTTP_200_OK)
+
 
 class CartCountView(APIView):
     permission_classes = [permissions.AllowAny]
